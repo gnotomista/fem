@@ -1,0 +1,23 @@
+function D=operatorespostamento(l,x)
+D=zeros(6,12);
+D(1,1)=funzioneforma(l,x,3,0);
+D(1,5)=funzioneforma(l,x,5,0);
+D(1,7)=funzioneforma(l,x,4,0);
+D(1,11)=funzioneforma(l,x,6,0);
+D(2,2)=funzioneforma(l,x,3,0);
+D(2,4)=-funzioneforma(l,x,5,0);
+D(2,8)=funzioneforma(l,x,4,0);
+D(2,10)=-funzioneforma(l,x,6,0);
+D(3,3)=funzioneforma(l,x,1,0);
+D(3,9)=funzioneforma(l,x,2,0);
+D(4,2)=-funzioneforma(l,x,3,1);
+D(4,4)=funzioneforma(l,x,5,1);
+D(4,8)=-funzioneforma(l,x,4,1);
+D(4,10)=funzioneforma(l,x,6,1);
+D(5,1)=funzioneforma(l,x,3,1);
+D(5,5)=funzioneforma(l,x,5,1);
+D(5,7)=funzioneforma(l,x,4,1);
+D(5,11)=funzioneforma(l,x,6,1);
+D(6,6)=funzioneforma(l,x,1,0);
+D(6,12)=funzioneforma(l,x,2,0);
+end

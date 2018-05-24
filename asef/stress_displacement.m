@@ -1,0 +1,52 @@
+function trave=stress_displacement(nodo,trave,nsez,modo)
+for t=1:length(trave)
+    ni=trave(t).connessione(1);
+    nf=trave(t).connessione(2);
+    xyzi=nodo(ni).xyz;
+    xyzf=nodo(nf).xyz;
+    l=norm(xyzf-xyzi);
+    E=trave(t).E;
+    G=trave(t).G;
+    P=trave(t).sezione;
+    Ke=rigidezzaelemento(l,E,G,P);
+    dg=[nodo(ni).spostamenti';nodo(nf).spostamenti'];
+    v_rif=trave(t).riferimento;
+    R=matriceriferimento(xyzi,xyzf,v_rif);
+    dl=R*dg;
+    dmg=[nodo(ni).modi(:,modo);nodo(nf).modi(:,modo)];
+    dml=R*dmg;
+    q_glob=trave(t).carichi;
+    q_loc=R(1:6,1:6)*q_glob;
+    f=forzetrave(l,q_loc);
+    gdlf=find(trave(t).vincoli);
+    gdlr=find(ones(12,1)-trave(t).vincoli);
+    if isempty(gdlr)
+        Kc=Ke;
+        fc=f';
+    else
+        Kc(gdlf,gdlf)=Ke(gdlf,gdlf)-Ke(gdlf,gdlr)*(Ke(gdlr,gdlr)\Ke(gdlr,gdlf));
+        Kc(gdlf,gdlr)=zeros(length(gdlf),length(gdlr));
+        Kc(gdlr,gdlf)=zeros(length(gdlr),length(gdlf));
+        Kc(gdlr,gdlr)=zeros(length(gdlr),length(gdlr));
+        fc(gdlf)=f(gdlf)-Ke(gdlf,gdlr)*(Ke(gdlr,gdlr)\f(gdlr));
+        fc(gdlr)=zeros(length(gdlr),1);
+        dl(gdlr)=Ke(gdlr,gdlr)\(-Ke(gdlr,gdlf)*dl(gdlf));
+        dml(gdlr)=Ke(gdlr,gdlr)\(-Ke(gdlr,gdlf)*dl(gdlf));
+    end
+    fi=Kc*dl-fc';
+    delta=l/(nsez-1);
+    for sez=1:nsez
+        s=(sez-1)*delta;
+        trave(t).T1(sez)=-fi(1)-q_loc(1)*s;
+        trave(t).T2(sez)=-fi(2)-q_loc(2)*s;
+        trave(t).N(sez)=-fi(3)-q_loc(3)*s;
+        trave(t).M1(sez)=-fi(4)-fi(2)*s-q_loc(2)*s^2/2-q_loc(4)*s;
+        trave(t).M2(sez)=-fi(5)+fi(1)*s+q_loc(1)*s^2/2-q_loc(5)*s;
+        trave(t).M3(sez)=-fi(6)-q_loc(6)*s;
+        u=R(1:6,1:6)'*(operatorespostamento(l,s-l/2)*dl);
+        trave(t).spostamenti(:,sez)=u;
+        um=R(1:6,1:6)'*(operatorespostamento(l,s-l/2)*dml);
+        trave(t).spostamentimodali(:,sez)=um;
+    end    
+end
+end

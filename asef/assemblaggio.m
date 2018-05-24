@@ -1,0 +1,63 @@
+function [K,M,F,v,C]=assemblaggio(nodo,trave)
+K=zeros(6*length(nodo),6*length(nodo));
+M=zeros(6*length(nodo),6*length(nodo));
+F=zeros(6*length(nodo),1);
+v=zeros(6*length(nodo),1);
+C=zeros(6*length(nodo),6);
+for t=1:length(trave)
+    ni=trave(t).connessione(1);
+    nf=trave(t).connessione(2);
+    xyzi=nodo(ni).xyz;
+    xyzf=nodo(nf).xyz;
+    l=norm(xyzf-xyzi);
+    E=trave(t).E;
+    G=trave(t).G;
+    P=trave(t).sezione;
+    Ke=rigidezzaelemento(l,E,G,P);
+    rho=trave(t).densita;
+    Me=massaelemento(l,P,rho);
+    q_glob=trave(t).carichi;
+    v_rif=trave(t).riferimento;
+    R=matriceriferimento(xyzi,xyzf,v_rif);
+    q_loc=R(1:6,1:6)*q_glob;
+    f=forzetrave(l,q_loc);
+    gdlf=find(trave(t).vincoli);
+    gdlr=find(ones(12,1)-trave(t).vincoli);
+    if isempty(gdlr)
+        Kc=Ke;
+        Mc=Me;
+        fc=f';
+    else
+        Kc(gdlf,gdlf)=Ke(gdlf,gdlf)-Ke(gdlf,gdlr)*(Ke(gdlr,gdlr)\Ke(gdlr,gdlf));
+        Kc(gdlf,gdlr)=zeros(length(gdlf),length(gdlr));
+        Kc(gdlr,gdlf)=zeros(length(gdlr),length(gdlf));
+        Kc(gdlr,gdlr)=zeros(length(gdlr),length(gdlr));
+        Mc(gdlf,gdlf)=Ke(gdlf,gdlf)-Ke(gdlf,gdlr)*(Ke(gdlr,gdlr)\Ke(gdlr,gdlf));
+        Mc(gdlf,gdlr)=zeros(length(gdlf),length(gdlr));
+        Mc(gdlr,gdlf)=zeros(length(gdlr),length(gdlf));
+        Mc(gdlr,gdlr)=zeros(length(gdlr),length(gdlr));
+        fc(gdlf)=f(gdlf);%-Ke(gdlf,gdlr)*(Ke(gdlr,gdlr)\f(gdlr));
+        fc(gdlr)=zeros(length(gdlr),1);
+    end
+    Kg=R'*Kc*R;
+    Mg=R'*Mc*R;
+    fg=R'*fc';
+    K(6*ni-5:6*ni,6*ni-5:6*ni)=K(6*ni-5:6*ni,6*ni-5:6*ni)+Kg(1:6,1:6);
+    K(6*ni-5:6*ni,6*nf-5:6*nf)=K(6*ni-5:6*ni,6*nf-5:6*nf)+Kg(1:6,7:12);
+    K(6*nf-5:6*nf,6*ni-5:6*ni)=K(6*nf-5:6*nf,6*ni-5:6*ni)+Kg(7:12,1:6);
+    K(6*nf-5:6*nf,6*nf-5:6*nf)=K(6*nf-5:6*nf,6*nf-5:6*nf)+Kg(7:12,7:12);
+    M(6*ni-5:6*ni,6*ni-5:6*ni)=M(6*ni-5:6*ni,6*ni-5:6*ni)+Mg(1:6,1:6);
+    M(6*ni-5:6*ni,6*nf-5:6*nf)=M(6*ni-5:6*ni,6*nf-5:6*nf)+Mg(1:6,7:12);
+    M(6*nf-5:6*nf,6*ni-5:6*ni)=M(6*nf-5:6*nf,6*ni-5:6*ni)+Mg(7:12,1:6);
+    M(6*nf-5:6*nf,6*nf-5:6*nf)=M(6*nf-5:6*nf,6*nf-5:6*nf)+Mg(7:12,7:12);
+    F(6*ni-5:6*ni)=F(6*ni-5:6*ni)+fg(1:6);
+    F(6*nf-5:6*nf)=F(6*nf-5:6*nf)+fg(7:12);
+end
+
+for i=1:length(nodo)
+    M(6*i-5:6*i,6*i-5:6*i)=M(6*i-5:6*i,6*i-5:6*i)+diag(nodo(i).masse);
+    F(6*i-5:6*i)=F(6*i-5:6*i)+nodo(i).azioni;
+    v(6*i-5:6*i)=v(6*i-5:6*i)+nodo(i).vincoli;
+    C(6*i-5:6*i,:)=diag(ones(6,1));
+end
+end
